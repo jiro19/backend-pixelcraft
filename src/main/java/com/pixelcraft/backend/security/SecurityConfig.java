@@ -33,21 +33,17 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Rutas públicas: Auth, Swagger y consulta del catálogo
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/productos/**", "/api/v1/categorias/**").permitAll()
 
-                // Gestión de productos y categorías: ADMIN o VENDEDOR
                 .requestMatchers(HttpMethod.POST, "/api/v1/productos/**", "/api/v1/categorias/**").hasAnyRole("ADMIN", "VENDEDOR")
                 .requestMatchers(HttpMethod.PUT, "/api/v1/productos/**", "/api/v1/categorias/**").hasAnyRole("ADMIN", "VENDEDOR")
                 .requestMatchers(HttpMethod.DELETE, "/api/v1/productos/**", "/api/v1/categorias/**").hasRole("ADMIN")
 
-                // Boletas: CLIENTE, VENDEDOR y ADMIN
                 .requestMatchers(HttpMethod.POST, "/api/v1/boletas/**").hasAnyRole("CLIENTE", "VENDEDOR", "ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/v1/boletas/**").hasAnyRole("CLIENTE", "VENDEDOR", "ADMIN")
 
-                // Usuarios: solo ADMIN
                 .requestMatchers("/api/v1/usuarios/**").hasRole("ADMIN")
 
                 .anyRequest().authenticated()
