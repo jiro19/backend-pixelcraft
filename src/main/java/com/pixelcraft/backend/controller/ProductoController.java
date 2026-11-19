@@ -4,11 +4,16 @@ import com.pixelcraft.backend.model.Producto;
 import com.pixelcraft.backend.repository.ProductoRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/productos")
@@ -17,6 +22,9 @@ import java.util.List;
 public class ProductoController {
 
     private final ProductoRepository productoRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @GetMapping
     @Operation(summary = "Listar todos los productos")
@@ -62,12 +70,23 @@ public class ProductoController {
     }
 
     @DeleteMapping("/{id}")
+    @Transactional
     @Operation(summary = "Eliminar producto (Solo ADMIN)")
-    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+    public ResponseEntity<?> eliminar(@PathVariable Long id) {
         if (!productoRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
-        productoRepository.deleteById(id);
-        return ResponseEntity.noContent().build();
+        try {
+            // Elimina primero referencias en detalle_boleta si el producto fue comprado antes
+            entityManager.createNativeQuery("DELETE FROM detalle_boleta WHERE producto_id = :id")
+                    .setParameter("id", id)
+                    .executeUpdate();
+
+            productoRepository.deleteById(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", "No se pudo eliminar el producto: " + e.getMessage()));
+        }
     }
 }
